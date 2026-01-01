@@ -19,7 +19,11 @@ jobs:
           # Güvenlik duvarını tamamen açıyoruz (Port 3389)
           netsh advfirewall firewall set rule group="Remote Desktop" new enable=Yes
           netsh advfirewall firewall add rule name="Open Port 3389" dir=in action=allow protocol=TCP localport=3389
-          Write-Host "RDP Active, NLA Disabled, Firewall Opened."
+          
+          # Servisi zorla başlatıyoruz
+          Set-Service -Name TermService -StartupType Automatic
+          Start-Service TermService
+          Write-Host "TermService started."
 
       - name: Set up Ngrok
         # Ngrok'u kurar ve RDP portunu (3389) tüneller.
@@ -38,8 +42,8 @@ jobs:
           Expand-Archive "ngrok.zip" -DestinationPath "." -Force
           
           .\ngrok.exe config add-authtoken $token
-          # Loglamayı açarak başlatıyoruz
-          Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389 --log=stdout" -RedirectStandardOutput "ngrok.log" -RedirectStandardError "ngrok_err.log" -NoNewWindow
+          # Loglamayı açarak başlatıyoruz (Region EU eklendi)
+          Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389 --region eu --log=stdout" -RedirectStandardOutput "ngrok.log" -RedirectStandardError "ngrok_err.log" -NoNewWindow
           Start-Sleep -Seconds 5
           
       - name: Get Connection Info
