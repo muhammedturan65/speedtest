@@ -22,19 +22,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install speedtest-cli
 
-      - name: Run Speed Test
+      - name: Run Speed Test with Image
         run: |
-          echo "Hız testi başlatılıyor..."
-          speedtest-cli --simple
+          echo "Hız testi ve resim oluşturma başlatılıyor..."
+          speedtest-cli --share > speedtest_output.txt
+          cat speedtest_output.txt
           
-      - name: Detailed Speed Test (JSON Output)
+      - name: Extract Image URL
         run: |
-          echo "Detaylı sonuçlar alınıyor..."
-          speedtest-cli --json > result.json
-          cat result.json
+          IMAGE_URL=$(grep "Share results:" speedtest_output.txt | awk '{print $3}')
+          echo "::notice title=Speedtest Image::Aşağıdaki linke tıklayarak sonucu görebilirsiniz: $IMAGE_URL"
+          echo "SPEEDTEST_IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: speedtest-results
-          path: result.json
+          path: speedtest_output.txt
