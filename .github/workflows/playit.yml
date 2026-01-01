@@ -11,10 +11,16 @@ jobs:
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 0
+          
+          # Change RDP Port to 25565 (Minecraft default) to use free tunnel
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "PortNumber" -value 25565
+          
           Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
+          
+          # Restart service to apply port change
           Set-Service -Name TermService -StartupType Automatic
-          Start-Service TermService
-          Write-Host "RDP Enabled (No NLA, No Firewall)."
+          Restart-Service -Name TermService -Force
+          Write-Host "RDP Enabled on Port 25565 (No NLA, No Firewall)."
 
       - name: Install Playit (GitHub Release)
         run: |
@@ -30,7 +36,7 @@ jobs:
       - name: Run Playit Agent
         run: |
           Write-Host "Playit Agent Başlatılıyor..."
-          Write-Host "::notice title=Action Required::Lütfen aşağıdaki Loglarda çıkan 'Claim URL' linkine tıklayın ve Port 3389 için tünel oluşturun."
+          Write-Host "::notice title=Action Required::Lütfen Linke tıklayın ve 'Minecraft Java' Tüneli oluşturun. (Port 25565 olarak ayarlandı)."
           
           # Playit'i başlatıyoruz ve çıktısını ekrana basıyoruz ki kullanıcı linki görebilsin
           # Playit interaktif çalıştığı için background job olarak başlatıp çıktıyı okumamız lazım.
