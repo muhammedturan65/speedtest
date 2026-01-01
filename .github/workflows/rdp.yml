@@ -28,22 +28,35 @@ jobs:
           
       - name: Get Connection Info
         run: |
-          Write-Host "Ngrok tüneli açılıyor..."
-          # Ngrok API'sinden public URL'yi çekmeye çalışıyoruz
-          $tunnels = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -ErrorAction SilentlyContinue
-          if ($tunnels) {
-            $url = $tunnels.tunnels[0].public_url
-            Write-Host "::notice title=RDP Connection Info::Bağlantı Adresi: $url"
-            Write-Host "::notice title=Credentials::Kullanıcı Adı: runneradmin | Şifre: (Aşağıdaki adımda ayarlanacak)"
-          } else {
-            Write-Warning "Ngrok tünel bilgisi alınamadı. Token doğru mu?"
+          Write-Host "Ngrok tüneli açılıyor... (API bekleniyor)"
+          $timeout = 30
+          $startTime = Get-Date
+          while ($true) {
+            try {
+               $response = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -ErrorAction Stop
+               if ($response.tunnels.Count -gt 0) {
+                 $url = $response.tunnels[0].public_url
+                 Write-Host "::notice title=RDP Connection Info::Bağlantı Adresi: $url"
+                 Write-Host "::notice title=Credentials::Kullanıcı Adı: runneradmin | Şifre: (Aşağıdaki adımda ayarlanacak)"
+                 break
+               }
+            } catch {
+               Write-Host "Ngrok API henüz hazır değil, bekleniyor..."
+            }
+            
+            if ((Get-Date) - $startTime -gt (New-TimeSpan -Seconds $timeout)) {
+               Write-Error "Ngrok tüneli açılamadı. Token hatalı olabilir veya ngrok başlatılamadı."
+               Get-Process ngrok -ErrorAction SilentlyContinue
+               exit 1
+            }
+            Start-Sleep -Seconds 2
           }
-
+          
       - name: Set User Password
         run: |
-          $password = "Mert1234!" # Burayı isterseniz değiştirebilirsiniz veya secret kullanabilirsiniz
+          $password = "Mert1234!"
           net user runneradmin $password
-          Write-Host "::notice title=Password Set::Kullanıcı şifresi: $password olarak ayarlandı."
+          Write-Host "::notice title=Password Set::Kullanıcı şifresi: $password"
 
       - name: Keep Alive
         run: |
