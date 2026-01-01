@@ -18,25 +18,23 @@ jobs:
         run: |
           $token = $env:NGROK_AUTH_TOKEN
           if ($token -match "^ngrok config") {
-            Write-Error "HATA: NGROK_AUTH_TOKEN içinde 'ngrok config...' komutu var. Sadece token'ı (örneğin '1p2LD...') kaydetmelisiniz."
+            Write-Error "HATA: NGROK_AUTH_TOKEN içinde 'ngrok config...' komutu var. Sadece token'ı secret olarak kaydetmelisiniz."
             exit 1
           }
           
-          # Winget ile kurulum (User request)
-          winget install ngrok -s msstore --accept-source-agreements --accept-package-agreements --disable-interactivity
+          # Winget ortam değişkenlerini anlık güncelleyemediği için ZIP yöntemine dönüyoruz (Daha kararlı)
+          Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
+          Expand-Archive "ngrok.zip" -DestinationPath "." -Force
           
-          # Winget kurulumu sonrası Path'in güncellenmesi gerekebilir, ancak ngrok genellikle direkt çalışır.
-          # Garanti olması için doğrudan çalıştırıyoruz.
-          
-          ngrok config add-authtoken $token
+          .\ngrok.exe config add-authtoken $token
           # Loglamayı açarak başlatıyoruz
-          Start-Process -FilePath "ngrok" -ArgumentList "tcp 3389 --log=stdout" -RedirectStandardOutput "ngrok.log" -RedirectStandardError "ngrok_err.log" -NoNewWindow
-          Start-Sleep -Seconds 10 # Winget sonrası servisin kendine gelmesi için biraz daha uzun bekleme
+          Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389 --log=stdout" -RedirectStandardOutput "ngrok.log" -RedirectStandardError "ngrok_err.log" -NoNewWindow
+          Start-Sleep -Seconds 5
           
       - name: Get Connection Info
         run: |
           Write-Host "Ngrok tüneli açılıyor... (API bekleniyor)"
-          $timeout = 30
+          $timeout = 45 # Süreyi biraz artırdık
           $startTime = Get-Date
           while ($true) {
             try {
@@ -52,10 +50,14 @@ jobs:
             }
             
             if ((Get-Date) - $startTime -gt (New-TimeSpan -Seconds $timeout)) {
-               Write-Error "Ngrok tüneli açılamadı. Token hatalı olabilir veya ngrok başlatılamadı."
-               Write-Host "--- NGROK LOGS ---"
-               Get-Content "ngrok.log" -ErrorAction SilentlyContinue
-               Get-Content "ngrok_err.log" -ErrorAction SilentlyContinue
+               Write-Host "::error::Ngrok tüneli açılamadı. Süre doldu."
+               
+               Write-Host "--- NGROK STANDARD LOGS ---"
+               if (Test-Path "ngrok.log") { Get-Content "ngrok.log" } else { Write-Host "Log dosyası bulunamadı." }
+               
+               Write-Host "--- NGROK ERROR LOGS ---"
+               if (Test-Path "ngrok_err.log") { Get-Content "ngrok_err.log" } else { Write-Host "Hata log dosyası bulunamadı." }
+               
                Write-Host "------------------"
                Get-Process ngrok -ErrorAction SilentlyContinue
                exit 1
