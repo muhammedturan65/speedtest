@@ -1,0 +1,57 @@
+name: RDP Access (Playit.gg)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp-playit:
+    runs-on: windows-latest
+    steps:
+      - name: Enable RDP & Firewall
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 0
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
+          Set-Service -Name TermService -StartupType Automatic
+          Start-Service TermService
+          Write-Host "RDP Enabled (No NLA, No Firewall)."
+
+      - name: Install Playit using Chocolatey
+        run: |
+          choco install playit -y
+          
+      - name: Set User Password
+        run: |
+          $password = "Mert1234!"
+          net user runneradmin $password
+          Write-Host "::notice title=Credentials::Kullanıcı Adı: runneradmin | Şifre: $password"
+
+      - name: Run Playit Agent
+        run: |
+          Write-Host "Playit Agent Başlatılıyor..."
+          Write-Host "::notice title=Action Required::Lütfen aşağıdaki Loglarda çıkan 'Claim URL' linkine tıklayın ve Port 3389 için tünel oluşturun."
+          
+          # Playit'i başlatıyoruz ve çıktısını ekrana basıyoruz ki kullanıcı linki görebilsin
+          # Playit interaktif çalıştığı için background job olarak başlatıp çıktıyı okumamız lazım.
+          
+          $playitProcess = Start-Process -FilePath "playit" -PassThru -NoNewWindow -RedirectStandardOutput "playit.log" -RedirectStandardError "playit_err.log"
+          
+          Write-Host "Loglar izleniyor... Lütfen bekleyin ve linki arayın."
+          
+          $LinkFound = $false
+          while (-not $LinkFound) {
+            if (Test-Path "playit.log") {
+               $content = Get-Content "playit.log"
+               $content | ForEach-Object {
+                 if ($_ -match "https://playit.gg/claim/") {
+                   Write-Host "::notice title=CLAIM THIS LINK::Linke Tıklayın: $_"
+                   Write-Host "Bulunan Link: $_"
+                   $LinkFound = $true
+                 }
+               }
+            }
+            Start-Sleep -Seconds 2
+          }
+          
+          # Link bulunduktan sonra ajanı çalışır durumda tutuyoruz
+          Get-Content "playit.log" -Wait
