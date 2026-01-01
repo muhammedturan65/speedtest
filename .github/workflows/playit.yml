@@ -17,10 +17,26 @@ jobs:
           
           Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
           
+          # Explicitly allow port 25565
+          New-NetFirewallRule -DisplayName "Minecraft-RDP" -Direction Inbound -LocalPort 25565 -Protocol TCP -Action Allow
+          
           # Restart service to apply port change
           Set-Service -Name TermService -StartupType Automatic
           Restart-Service -Name TermService -Force
-          Write-Host "RDP Enabled on Port 25565 (No NLA, No Firewall)."
+          
+          # Wait for port to open
+          Write-Host "Waiting for RDP service on port 25565..."
+          $loopCount = 0
+          while ($loopCount -lt 20) {
+            $connection = Get-NetTCPConnection -LocalPort 25565 -ErrorAction SilentlyContinue
+            if ($connection) {
+               Write-Host "SUCCESS: RDP is listening on port 25565."
+               break
+            }
+            Start-Sleep -Seconds 3
+            $loopCount++
+          }
+          Write-Host "RDP Configuration Complete."
 
       - name: Install Playit (GitHub Release)
         run: |
