@@ -1,0 +1,40 @@
+name: Sunucu Hız Testi (Server Speed Test)
+
+on:
+  workflow_dispatch: # Manuel olarak tetiklemek için
+  schedule:
+    - cron: '0 */6 * * *' # İsteğe bağlı: Her 6 saatte bir otomatik çalışma
+
+jobs:
+  speed-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Speedtest CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install speedtest-cli
+
+      - name: Run Speed Test
+        run: |
+          echo "Hız testi başlatılıyor..."
+          speedtest-cli --simple
+          
+      - name: Detailed Speed Test (JSON Output)
+        run: |
+          echo "Detaylı sonuçlar alınıyor..."
+          speedtest-cli --json > result.json
+          cat result.json
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: speedtest-results
+          path: result.json
