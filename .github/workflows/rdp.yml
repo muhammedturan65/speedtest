@@ -16,14 +16,17 @@ jobs:
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
           # NLA (Network Level Authentication) zorunluluğunu kapatıyoruz (Bağlantı sorununu çözer)
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 0
-          # Güvenlik duvarını tamamen açıyoruz (Port 3389)
-          netsh advfirewall firewall set rule group="Remote Desktop" new enable=Yes
-          netsh advfirewall firewall add rule name="Open Port 3389" dir=in action=allow protocol=TCP localport=3389
+          # Güvenlik duvarını tamamen siliyoruz (Nuclear option)
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
           
-          # Servisi zorla başlatıyoruz
+          # Servisi zorla yeniden başlatıyoruz (Ayarların geçerli olması için Restart şart)
           Set-Service -Name TermService -StartupType Automatic
-          Start-Service TermService
-          Write-Host "TermService started."
+          Restart-Service -Name TermService -Force
+          
+          # Debug: Port dinleniyor mu?
+          Write-Host "Checking Port 3389..."
+          netstat -an | findstr 3389
+          Write-Host "Firewall Disabled, Service Restarted."
 
       - name: Set up Ngrok
         # Ngrok'u kurar ve RDP portunu (3389) tüneller.
