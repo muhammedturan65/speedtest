@@ -10,6 +10,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Enable RDP & Firewall
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 1
+          Write-Host "RDP ve Firewall kuralları aktif edildi."
+
       - name: Set up Ngrok
         # Ngrok'u kurar ve RDP portunu (3389) tüneller.
         # Bu işlemin çalışması için Settings > Secrets > Actions kısmında NGROK_AUTH_TOKEN tanımlanmalıdır.
