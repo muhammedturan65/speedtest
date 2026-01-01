@@ -1,0 +1,36 @@
+name: RDP Access (Cloudflare Tunnel)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp-cloudflared:
+    runs-on: windows-latest
+    steps:
+      - name: Enable RDP & Firewall
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 0
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
+          Set-Service -Name TermService -StartupType Automatic
+          Restart-Service -Name TermService -Force
+          Write-Host "RDP Enabled (Standard Port 3389)."
+
+      - name: Install Cloudflared
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "cloudflared.exe"
+          Write-Host "Cloudflared downloaded."
+
+      - name: Set User Password
+        run: |
+          $password = "Mert1234!"
+          net user runneradmin $password
+          Write-Host "::notice title=Simple Password::Kullanıcı Adı: runneradmin | Şifre: $password"
+
+      - name: Start Cloudflare Tunnel
+        run: |
+          Write-Host "Cloudflare Tüneli Başlatılıyor..."
+          Write-Host "::notice title=ACTION REQUIRED::Lütfen aşağıdaki 'trycloudflare.com' linkini kopyalayıp tarayıcınızda açın."
+          
+          # Quick Tunnel (Hesap gerektirmez) başlatıyoruz
+          .\cloudflared.exe tunnel --url rdp://localhost:3389
