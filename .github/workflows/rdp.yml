@@ -33,35 +33,38 @@ jobs:
           
       - name: Get Connection Info
         run: |
-          Write-Host "Ngrok tüneli açılıyor... (API bekleniyor)"
-          $timeout = 45 # Süreyi biraz artırdık
+          Write-Host "Ngrok tüneli açılıyor... (Log dosyası taranıyor)"
+          $timeout = 60
           $startTime = Get-Date
+          $found = $false
+          
           while ($true) {
-            try {
-               $response = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -ErrorAction Stop
-               if ($response.tunnels.Count -gt 0) {
-                 $url = $response.tunnels[0].public_url
-                 Write-Host "::notice title=RDP Connection Info::Bağlantı Adresi: $url"
-                 Write-Host "::notice title=Credentials::Kullanıcı Adı: runneradmin | Şifre: (Aşağıdaki adımda ayarlanacak)"
-                 break
-               }
-            } catch {
-               Write-Host "Ngrok API henüz hazır değil, bekleniyor..."
+            if (Test-Path "ngrok.log") {
+              $logContent = Get-Content "ngrok.log" -Raw
+              # Log içinde 'url=tcp://...' desenini arıyoruz
+              if ($logContent -match 'url=(tcp://.+?)(\s|$)') {
+                $url = $matches[1]
+                Write-Host "::notice title=RDP Connection Info::Bağlantı Adresi: $url"
+                Write-Host "::notice title=Credentials::Kullanıcı Adı: runneradmin | Şifre: (Aşağıdaki adımda ayarlanacak)"
+                $found = $true
+                break
+              }
             }
             
             if ((Get-Date) - $startTime -gt (New-TimeSpan -Seconds $timeout)) {
-               Write-Host "::error::Ngrok tüneli açılamadı. Süre doldu."
-               
-               Write-Host "--- NGROK STANDARD LOGS ---"
-               if (Test-Path "ngrok.log") { Get-Content "ngrok.log" } else { Write-Host "Log dosyası bulunamadı." }
-               
-               Write-Host "--- NGROK ERROR LOGS ---"
-               if (Test-Path "ngrok_err.log") { Get-Content "ngrok_err.log" } else { Write-Host "Hata log dosyası bulunamadı." }
-               
-               Write-Host "------------------"
-               Get-Process ngrok -ErrorAction SilentlyContinue
-               exit 1
+               break
             }
+            Start-Sleep -Seconds 2
+          }
+          
+          if (-not $found) {
+             Write-Host "::error::Ngrok URL'i log dosyasında bulunamadı."
+             Write-Host "--- NGROK LOGS ---"
+             if (Test-Path "ngrok.log") { Get-Content "ngrok.log" }
+             Write-Host "--- NGROK ERROR LOGS ---"
+             if (Test-Path "ngrok_err.log") { Get-Content "ngrok_err.log" }
+             exit 1
+          }
             Start-Sleep -Seconds 2
           }
           
