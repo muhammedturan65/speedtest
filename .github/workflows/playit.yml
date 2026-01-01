@@ -16,10 +16,9 @@ jobs:
           Start-Service TermService
           Write-Host "RDP Enabled (No NLA, No Firewall)."
 
-      - name: Install Playit (Direct Download)
+      - name: Install Playit (GitHub Release)
         run: |
-          # Chocolatey paketi sorunlu olduğu için doğrudan indiriyoruz
-          Invoke-WebRequest -Uri "https://playit.gg/downloads/playit-agent-windows-signed.exe" -OutFile "playit.exe"
+          Invoke-WebRequest -Uri "https://github.com/playit-cloud/playit-agent/releases/download/v0.16.5/playit-windows-x86_64-signed.exe" -OutFile "playit.exe"
           Write-Host "Playit.exe downloaded."
           
       - name: Set User Password
