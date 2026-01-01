@@ -16,9 +16,11 @@ jobs:
           Start-Service TermService
           Write-Host "RDP Enabled (No NLA, No Firewall)."
 
-      - name: Install Playit using Chocolatey
+      - name: Install Playit (Direct Download)
         run: |
-          choco install playit -y
+          # Chocolatey paketi sorunlu olduğu için doğrudan indiriyoruz
+          Invoke-WebRequest -Uri "https://playit.gg/downloads/playit-agent-windows-signed.exe" -OutFile "playit.exe"
+          Write-Host "Playit.exe downloaded."
           
       - name: Set User Password
         run: |
