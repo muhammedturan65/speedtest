@@ -22,8 +22,14 @@ jobs:
           }
           Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
           Expand-Archive "ngrok.zip" -DestinationPath "."
-          .\ngrok.exe config add-authtoken $env:NGROK_AUTH_TOKEN
-          Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389" -NoNewWindow
+          $token = $env:NGROK_AUTH_TOKEN
+          if ($token -match "^ngrok config") {
+            Write-Error "HATA: NGROK_AUTH_TOKEN içinde 'ngrok config...' komutu var. Sadece token'ı (örneğin '1p2LD...') kaydetmelisiniz."
+            exit 1
+          }
+          .\ngrok.exe config add-authtoken $token
+          # Loglamayı açarak başlatıyoruz
+          Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389 --log=stdout" -RedirectStandardOutput "ngrok.log" -RedirectStandardError "ngrok_err.log" -NoNewWindow
           Start-Sleep -Seconds 5
           
       - name: Get Connection Info
@@ -46,6 +52,10 @@ jobs:
             
             if ((Get-Date) - $startTime -gt (New-TimeSpan -Seconds $timeout)) {
                Write-Error "Ngrok tüneli açılamadı. Token hatalı olabilir veya ngrok başlatılamadı."
+               Write-Host "--- NGROK LOGS ---"
+               Get-Content "ngrok.log" -ErrorAction SilentlyContinue
+               Get-Content "ngrok_err.log" -ErrorAction SilentlyContinue
+               Write-Host "------------------"
                Get-Process ngrok -ErrorAction SilentlyContinue
                exit 1
             }
@@ -64,4 +74,3 @@ jobs:
           while ($true) {
             Start-Sleep -Seconds 60
           }
-          
