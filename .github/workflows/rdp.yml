@@ -65,8 +65,6 @@ jobs:
              if (Test-Path "ngrok_err.log") { Get-Content "ngrok_err.log" }
              exit 1
           }
-            Start-Sleep -Seconds 2
-          }
           
       - name: Set User Password
         run: |
