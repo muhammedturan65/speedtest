@@ -1,0 +1,53 @@
+name: RDP Access (Windows)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp-access:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Ngrok
+        # Ngrok'u kurar ve RDP portunu (3389) tüneller.
+        # Bu işlemin çalışması için Settings > Secrets > Actions kısmında NGROK_AUTH_TOKEN tanımlanmalıdır.
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          if ($env:NGROK_AUTH_TOKEN -eq $null) {
+            Write-Error "NGROK_AUTH_TOKEN secret'ı bulunamadı! Lütfen GitHub repo ayarlarından ekleyin."
+            exit 1
+          }
+          Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
+          Expand-Archive "ngrok.zip" -DestinationPath "."
+          .\ngrok.exe config add-authtoken $env:NGROK_AUTH_TOKEN
+          Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389" -NoNewWindow
+          Start-Sleep -Seconds 5
+          
+      - name: Get Connection Info
+        run: |
+          Write-Host "Ngrok tüneli açılıyor..."
+          # Ngrok API'sinden public URL'yi çekmeye çalışıyoruz
+          $tunnels = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -ErrorAction SilentlyContinue
+          if ($tunnels) {
+            $url = $tunnels.tunnels[0].public_url
+            Write-Host "::notice title=RDP Connection Info::Bağlantı Adresi: $url"
+            Write-Host "::notice title=Credentials::Kullanıcı Adı: runneradmin | Şifre: (Aşağıdaki adımda ayarlanacak)"
+          } else {
+            Write-Warning "Ngrok tünel bilgisi alınamadı. Token doğru mu?"
+          }
+
+      - name: Set User Password
+        run: |
+          $password = "Mert1234!" # Burayı isterseniz değiştirebilirsiniz veya secret kullanabilirsiniz
+          net user runneradmin $password
+          Write-Host "::notice title=Password Set::Kullanıcı şifresi: $password olarak ayarlandı."
+
+      - name: Keep Alive
+        run: |
+          Write-Host "Bağlantı açık tutuluyor... (Maksimum 6 saat)"
+          while ($true) {
+            Start-Sleep -Seconds 60
+          }
